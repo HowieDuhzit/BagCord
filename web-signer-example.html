@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BagCord Transaction Signer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .security-warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+
+    .security-warning h3 {
+      color: #856404;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .security-warning p {
+      color: #856404;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .tx-details {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+
+    .tx-details h3 {
+      color: #333;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .detail-label {
+      color: #666;
+      font-weight: 600;
+    }
+
+    .detail-value {
+      color: #333;
+      font-family: 'Courier New', monospace;
+      max-width: 60%;
+      word-break: break-all;
+    }
+
+    .tx-base64 {
+      background: #f1f3f5;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 25px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+      color: #495057;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 10px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .wallet-status {
+      background: #e7f5ff;
+      border-left: 4px solid #228be6;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #1864ab;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔒 Transaction Signer</h1>
+    <p class="subtitle">BagCord - Non-Custodial Transaction Signing</p>
+
+    <div class="security-warning">
+      <h3>⚠️ Security Checklist</h3>
+      <p>
+        • Review all transaction details carefully<br>
+        • Verify token addresses match your expectations<br>
+        • Only sign if you understand what the transaction does<br>
+        • Never share your private keys or seed phrase
+      </p>
+    </div>
+
+    <div id="walletStatus" class="wallet-status hidden"></div>
+
+    <div class="tx-details">
+      <h3>Transaction Details</h3>
+      <div class="detail-row">
+        <span class="detail-label">Action:</span>
+        <span class="detail-value" id="txAction">Unknown</span>
+      </div>
+      <div class="detail-row" id="tokenRow" class="hidden">
+        <span class="detail-label">Token:</span>
+        <span class="detail-value" id="txToken">-</span>
+      </div>
+      <div class="detail-row" id="amountRow" class="hidden">
+        <span class="detail-label">Amount:</span>
+        <span class="detail-value" id="txAmount">-</span>
+      </div>
+    </div>
+
+    <div class="tx-base64" id="txBase64">
+      No transaction data found in URL
+    </div>
+
+    <button id="connectBtn" class="btn-primary">Connect Wallet</button>
+    <button id="signBtn" class="btn-primary hidden" disabled>Sign Transaction</button>
+    <button id="copyBtn" class="btn-secondary">Copy Transaction</button>
+
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script>
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const txBase64 = urlParams.get('tx');
+    const action = urlParams.get('action') || 'Unknown';
+    const token = urlParams.get('token');
+    const amount = urlParams.get('amount');
+
+    // Display transaction details
+    document.getElementById('txAction').textContent = action.toUpperCase();
+    document.getElementById('txBase64').textContent = txBase64 || 'No transaction data found in URL';
+
+    if (token) {
+      document.getElementById('tokenRow').classList.remove('hidden');
+      document.getElementById('txToken').textContent = token;
+    }
+
+    if (amount) {
+      document.getElementById('amountRow').classList.remove('hidden');
+      document.getElementById('txAmount').textContent = amount;
+    }
+
+    let wallet = null;
+
+    // Connect wallet button
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      try {
+        // Check if Phantom or Solflare is installed
+        if (window.solana && window.solana.isPhantom) {
+          wallet = window.solana;
+        } else if (window.solflare) {
+          wallet = window.solflare;
+        } else {
+          showStatus('error', 'No Solana wallet detected. Please install Phantom or Solflare.');
+          return;
+        }
+
+        // Connect wallet
+        const resp = await wallet.connect();
+        const publicKey = resp.publicKey.toString();
+
+        document.getElementById('walletStatus').textContent = `Connected: ${publicKey.slice(0, 4)}...${publicKey.slice(-4)}`;
+        document.getElementById('walletStatus').classList.remove('hidden');
+
+        document.getElementById('connectBtn').classList.add('hidden');
+        document.getElementById('signBtn').classList.remove('hidden');
+        document.getElementById('signBtn').disabled = false;
+
+        showStatus('success', 'Wallet connected successfully!');
+      } catch (error) {
+        console.error('Wallet connection error:', error);
+        showStatus('error', `Failed to connect wallet: ${error.message}`);
+      }
+    });
+
+    // Sign transaction button
+    document.getElementById('signBtn').addEventListener('click', async () => {
+      if (!wallet) {
+        showStatus('error', 'Please connect your wallet first');
+        return;
+      }
+
+      if (!txBase64) {
+        showStatus('error', 'No transaction data to sign');
+        return;
+      }
+
+      try {
+        document.getElementById('signBtn').disabled = true;
+        showStatus('info', 'Signing transaction... Please approve in your wallet.');
+
+        // Decode transaction from Base64
+        const transaction = Buffer.from(txBase64, 'base64');
+
+        // Sign and send transaction
+        const { signature } = await wallet.signAndSendTransaction(transaction);
+
+        showStatus('success', `Transaction sent! Signature: ${signature}`);
+
+        // Provide Solana Explorer link
+        setTimeout(() => {
+          showStatus('success', `Transaction sent!<br><a href="https://solscan.io/tx/${signature}" target="_blank" style="color: #155724; text-decoration: underline;">View on Solscan</a>`);
+        }, 100);
+
+      } catch (error) {
+        console.error('Transaction signing error:', error);
+        showStatus('error', `Failed to sign transaction: ${error.message}`);
+        document.getElementById('signBtn').disabled = false;
+      }
+    });
+
+    // Copy transaction button
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      if (!txBase64) {
+        showStatus('error', 'No transaction to copy');
+        return;
+      }
+
+      navigator.clipboard.writeText(txBase64).then(() => {
+        showStatus('success', 'Transaction copied to clipboard!');
+      }).catch(err => {
+        showStatus('error', 'Failed to copy transaction');
+      });
+    });
+
+    function showStatus(type, message) {
+      const statusEl = document.getElementById('status');
+      statusEl.className = `status ${type}`;
+      statusEl.innerHTML = message;
+      statusEl.classList.remove('hidden');
+    }
+
+    // Auto-connect if wallet is already connected
+    if (window.solana && window.solana.isConnected) {
+      wallet = window.solana;
+      const publicKey = window.solana.publicKey.toString();
+      document.getElementById('walletStatus').textContent = `Connected: ${publicKey.slice(0, 4)}...${publicKey.slice(-4)}`;
+      document.getElementById('walletStatus').classList.remove('hidden');
+      document.getElementById('connectBtn').classList.add('hidden');
+      document.getElementById('signBtn').classList.remove('hidden');
+      document.getElementById('signBtn').disabled = false;
+    }
+  </script>
+</body>
+</html>

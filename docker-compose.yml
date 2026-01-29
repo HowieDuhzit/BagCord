@@ -1,0 +1,59 @@
+services:
+  bagcord:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Container name
+    container_name: bagcord-bot
+
+    # Restart policy - always restart unless explicitly stopped
+    restart: unless-stopped
+
+    # Environment variables
+    # These will be filled in by Coolify's UI or can use magic variables
+    environment:
+      # Required Discord Configuration
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+
+      # Required Bags.fm API
+      - BAGS_API_KEY=${BAGS_API_KEY}
+
+      # Optional Configuration
+      - SIGNER_WEB_URL=${SIGNER_WEB_URL:-https://example.com/sign}
+      - LAUNCH_ALLOWED_ROLES=${LAUNCH_ALLOWED_ROLES:-}
+      - TOKEN_DENYLIST=${TOKEN_DENYLIST:-}
+
+      # Node.js production mode
+      - NODE_ENV=production
+
+    # Health check configuration
+    # Since Discord bots don't expose HTTP ports, we rely on process health
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "node"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Resource limits (optional, adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+# Note: No volumes needed as this bot is stateless
+# Note: No ports exposed as this is a Discord gateway bot, not an HTTP server
