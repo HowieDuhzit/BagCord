@@ -73,7 +73,7 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
       console.error('Error executing command:', error);
 
-      const errorMessage = '❌ There was an error executing this command!';
+      const errorMessage = `❌ Error: ${error.message || 'Unknown error occurred'}`;
 
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ content: errorMessage, ephemeral: true });
