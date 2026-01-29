@@ -51,12 +51,15 @@ export const claimCommands = [
         let totalClaimable = 0;
 
         positions.slice(0, 10).forEach((position, index) => {
-          const amount = position.amount || 0;
+          const amount = position.totalClaimableLamportsUserShare || 0;
           totalClaimable += amount;
+
+          const tokenMint = position.baseMint || 'Unknown';
+          const poolType = position.isMigrated ? 'DAMM v2' : 'Virtual Pool';
 
           embed.addFields({
             name: `Position ${index + 1}`,
-            value: `Token: \`${TransactionBuilder.truncateAddress(position.tokenMint || 'Unknown')}\`\nAmount: ${TransactionBuilder.lamportsToSol(amount)} SOL`,
+            value: `Token: \`${TransactionBuilder.truncateAddress(tokenMint)}\`\nAmount: ${TransactionBuilder.lamportsToSol(amount.toString())} SOL\nType: ${poolType}`,
             inline: true
           });
         });
@@ -71,7 +74,7 @@ export const claimCommands = [
 
         embed.addFields({
           name: 'Total Claimable',
-          value: `~${TransactionBuilder.lamportsToSol(totalClaimable)} SOL`,
+          value: `${TransactionBuilder.lamportsToSol(totalClaimable.toString())} SOL`,
           inline: false
         });
 
