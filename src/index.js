@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
 import { config } from './config.js';
 import { commands } from './commands/index.js';
 import { handleLaunchButtons } from './commands/launch.js';
@@ -19,7 +19,26 @@ for (const command of commands) {
   client.commands.set(command.data.name, command);
 }
 
-client.once('ready', () => {
+// Register slash commands on startup
+async function registerCommands() {
+  try {
+    console.log('🚀 Registering slash commands...');
+    const commandsData = commands.map(command => command.data.toJSON());
+    const rest = new REST({ version: '10' }).setToken(config.discordToken);
+
+    const data = await rest.put(
+      Routes.applicationCommands(config.discordClientId),
+      { body: commandsData },
+    );
+
+    console.log(`✅ Successfully registered ${data.length} slash commands`);
+  } catch (error) {
+    console.error('❌ Error registering commands:', error);
+  }
+}
+
+client.once('ready', async () => {
+  await registerCommands();
   console.log('╔══════════════════════════════════════════╗');
   console.log('║                                          ║');
   console.log('║          🤖 BagCord Bot Ready           ║');
