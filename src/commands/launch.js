@@ -54,6 +54,11 @@ export const launchCommands = [
         option.setName('website')
           .setDescription('Website URL')
           .setRequired(false)
+      )
+      .addStringOption(option =>
+        option.setName('wallet')
+          .setDescription('Your creator wallet address (will sign the transaction)')
+          .setRequired(true)
       ),
     async execute(interaction) {
       // SECURITY CHECK 1: Role permissions
@@ -108,6 +113,7 @@ export const launchCommands = [
       await interaction.deferReply({ ephemeral: true });
 
       try {
+        const wallet = interaction.options.getString('wallet');
         const tokenData = {
           name: interaction.options.getString('name'),
           symbol: interaction.options.getString('symbol'),
@@ -117,6 +123,12 @@ export const launchCommands = [
           telegram: interaction.options.getString('telegram'),
           website: interaction.options.getString('website')
         };
+
+        // Validate wallet address
+        if (!TransactionBuilder.isValidSolanaAddress(wallet)) {
+          await interaction.editReply('❌ Invalid wallet address format');
+          return;
+        }
 
         // Basic validation
         if (tokenData.symbol.length > 10) {
@@ -129,59 +141,72 @@ export const launchCommands = [
           return;
         }
 
-        // Show preview and require confirmation
+        await interaction.editReply('⏳ Creating token metadata and building launch transaction...');
+
+        // Create token info/metadata
+        const tokenInfoData = await BagsAPI.createTokenInfo(tokenData, null);
+
+        if (!tokenInfoData.success) {
+          await interaction.editReply(`❌ Error creating token info: ${tokenInfoData.error || 'Unknown error'}`);
+          return;
+        }
+
+        const tokenMint = tokenInfoData.data.tokenMint;
+
+        // Create launch transaction
+        const txData = await BagsAPI.createLaunchTransaction({
+          tokenMint,
+          creatorPublicKey: wallet,
+          initialBuyAmount: 0
+        });
+
+        if (!txData.success) {
+          await interaction.editReply(`❌ Error creating launch transaction: ${txData.error || 'Unknown error'}`);
+          return;
+        }
+
+        const transaction = txData.data.transaction;
+
+        const txInfo = TransactionBuilder.formatTransactionMessage(transaction, {
+          action: 'launch',
+          name: tokenData.name,
+          symbol: tokenData.symbol
+        });
+
         const embed = new EmbedBuilder()
-          .setColor(0xFFD700)
-          .setTitle('🚀 Token Launch Preview')
-          .setDescription('**⚠️ Review carefully before confirming**')
+          .setColor(0x00FF00)
+          .setTitle('✅ Token Launch Transaction Ready')
+          .setDescription(txInfo.description)
           .addFields(
+            { name: 'Token Mint', value: `\`${tokenMint}\``, inline: false },
             { name: 'Name', value: tokenData.name, inline: true },
             { name: 'Symbol', value: tokenData.symbol, inline: true },
             { name: '\u200b', value: '\u200b', inline: true },
-            { name: 'Description', value: tokenData.description, inline: false }
-          );
+            { name: 'Creator Wallet', value: `\`${TransactionBuilder.truncateAddress(wallet)}\``, inline: false },
+            { name: '⚠️ Important', value: '**Review the transaction carefully before signing**\nThis bot never stores your private keys', inline: false }
+          )
+          .setFooter({ text: '🔒 Transaction built - Sign in your wallet' })
+          .setTimestamp();
 
         if (tokenData.imageUrl) {
           embed.setThumbnail(tokenData.imageUrl);
         }
 
-        if (tokenData.twitter || tokenData.telegram || tokenData.website) {
-          let socials = '';
-          if (tokenData.twitter) socials += `Twitter: @${tokenData.twitter}\n`;
-          if (tokenData.telegram) socials += `Telegram: ${tokenData.telegram}\n`;
-          if (tokenData.website) socials += `Website: ${tokenData.website}\n`;
-          embed.addFields({ name: 'Socials', value: socials, inline: false });
-        }
-
-        embed.addFields({
-          name: '⚠️ Security Checklist',
-          value: '✅ You control the creator wallet\n✅ You will sign the transaction\n✅ The bot never holds your keys\n✅ You understand the launch process',
-          inline: false
-        });
-
-        embed.setFooter({ text: 'Click Confirm to proceed to transaction building' })
-          .setTimestamp();
-
-        const launchId = `launch_${Date.now()}_${interaction.user.id}`;
-        launchWizardStore.set(launchId, {
-          tokenData,
-          userId: interaction.user.id,
-          expiresAt: Date.now() + 600000 // 10 minutes
-        });
-
         const row = new ActionRowBuilder()
           .addComponents(
             new ButtonBuilder()
-              .setCustomId(`launch_confirm_${launchId}`)
-              .setLabel('✅ Confirm Launch')
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`launch_cancel_${launchId}`)
-              .setLabel('❌ Cancel')
-              .setStyle(ButtonStyle.Danger)
+              .setLabel('Sign Transaction')
+              .setURL(txInfo.signingUrl)
+              .setStyle(ButtonStyle.Link)
           );
 
-        await interaction.editReply({ embeds: [embed], components: [row] });
+        // Set cooldowns
+        securityManager.setCooldown(interaction.user.id, 'launch');
+        if (interaction.guildId) {
+          securityManager.setServerLaunchCooldown(interaction.guildId);
+        }
+
+        await interaction.editReply({ content: '', embeds: [embed], components: [row] });
       } catch (error) {
         await interaction.editReply(`❌ Error: ${error.message}`);
       }
