@@ -151,8 +151,8 @@ export const launchCommands = [
           return;
         }
 
-        const tokenMint = tokenInfoData.data.tokenMint;
-        const ipfs = tokenInfoData.data.tokenMetadata; // IPFS URL
+        const tokenMint = tokenInfoData.response.tokenMint;
+        const ipfs = tokenInfoData.response.tokenMetadata; // IPFS URL
 
         await interaction.editReply('⏳ Step 2/3: Creating fee share configuration...');
 
@@ -169,7 +169,7 @@ export const launchCommands = [
           return;
         }
 
-        const configKey = feeConfigData.data.configKey;
+        const configKey = feeConfigData.response.meteoraConfigKey;
 
         await interaction.editReply('⏳ Step 3/3: Building launch transaction...');
 
@@ -187,7 +187,7 @@ export const launchCommands = [
           return;
         }
 
-        const transaction = txData.data.transaction || txData.data;
+        const transaction = txData.response.transaction || txData.response;
 
         const txInfo = TransactionBuilder.formatTransactionMessage(transaction, {
           action: 'launch',

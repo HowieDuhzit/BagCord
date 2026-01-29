@@ -95,19 +95,29 @@ export class BagsAPI {
 
   static async createTokenInfo(tokenData) {
     try {
-      // For now, we'll use JSON instead of FormData since we're not handling file uploads
-      const body = {
-        name: tokenData.name,
-        symbol: tokenData.symbol,
-        description: tokenData.description
-      };
+      // API requires multipart/form-data
+      const formData = new URLSearchParams();
+      formData.append('name', tokenData.name);
+      formData.append('symbol', tokenData.symbol);
+      formData.append('description', tokenData.description);
 
-      if (tokenData.imageUrl) body.imageUrl = tokenData.imageUrl;
-      if (tokenData.twitter) body.twitter = tokenData.twitter;
-      if (tokenData.telegram) body.telegram = tokenData.telegram;
-      if (tokenData.website) body.website = tokenData.website;
+      // imageUrl is required if not uploading a file
+      if (tokenData.imageUrl) {
+        formData.append('imageUrl', tokenData.imageUrl);
+      } else {
+        // Provide a placeholder image URL if none provided
+        formData.append('imageUrl', 'https://via.placeholder.com/400');
+      }
 
-      const response = await api.post('/token-launch/create-token-info', body);
+      if (tokenData.twitter) formData.append('twitter', tokenData.twitter);
+      if (tokenData.telegram) formData.append('telegram', tokenData.telegram);
+      if (tokenData.website) formData.append('website', tokenData.website);
+
+      const response = await api.post('/token-launch/create-token-info', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create token info: ${error.response?.data?.error || error.message}`);
