@@ -96,8 +96,8 @@ export const claimCommands = [
       )
       .addStringOption(option =>
         option.setName('token')
-          .setDescription('Specific token mint to claim (optional - leave empty for all)')
-          .setRequired(false)
+          .setDescription('Token mint address to claim fees for')
+          .setRequired(true)
       ),
     async execute(interaction) {
       // SECURITY: Send transaction building to DMs
@@ -151,8 +151,17 @@ export const claimCommands = [
           return;
         }
 
+        // Token mint is required for claim API
+        if (!tokenMint) {
+          await interaction.editReply('❌ Please specify a token mint to claim fees for. Use the `token` parameter.');
+          return;
+        }
+
         // Build claim transaction
-        const txData = await BagsAPI.createClaimTransactions(wallet, tokenMint);
+        const txData = await BagsAPI.createClaimTransactions(wallet, tokenMint, {
+          claimVirtualPoolFees: true,
+          claimDammV2Fees: true
+        });
 
         if (!txData.success) {
           await interaction.editReply(`❌ Error: ${txData.error || 'Failed to build transaction'}`);

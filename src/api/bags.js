@@ -93,29 +93,50 @@ export class BagsAPI {
 
   // ========== TOKEN LAUNCH (Safe - Returns Unsigned TX) ==========
 
-  static async createTokenInfo(tokenData, imageFile) {
+  static async createTokenInfo(tokenData) {
     try {
-      const formData = new FormData();
-      formData.append('name', tokenData.name);
-      formData.append('symbol', tokenData.symbol);
-      formData.append('description', tokenData.description);
-      if (tokenData.twitter) formData.append('twitter', tokenData.twitter);
-      if (tokenData.telegram) formData.append('telegram', tokenData.telegram);
-      if (tokenData.website) formData.append('website', tokenData.website);
-      if (imageFile) formData.append('image', imageFile);
+      // For now, we'll use JSON instead of FormData since we're not handling file uploads
+      const body = {
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        description: tokenData.description
+      };
 
-      const response = await api.post('/token-launch/create-token-info', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      if (tokenData.imageUrl) body.imageUrl = tokenData.imageUrl;
+      if (tokenData.twitter) body.twitter = tokenData.twitter;
+      if (tokenData.telegram) body.telegram = tokenData.telegram;
+      if (tokenData.website) body.website = tokenData.website;
+
+      const response = await api.post('/token-launch/create-token-info', body);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create token info: ${error.response?.data?.error || error.message}`);
     }
   }
 
-  static async createLaunchTransaction(launchData) {
+  static async createFeeShareConfig(payer, baseMint, claimersArray, basisPointsArray) {
     try {
-      const response = await api.post('/token-launch/create-launch-transaction', launchData);
+      const response = await api.post('/fee-share/config', {
+        payer,
+        baseMint,
+        claimersArray,
+        basisPointsArray
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to create fee share config: ${error.response?.data?.error || error.message}`);
+    }
+  }
+
+  static async createLaunchTransaction(ipfs, tokenMint, wallet, initialBuyLamports, configKey) {
+    try {
+      const response = await api.post('/token-launch/create-launch-transaction', {
+        ipfs,
+        tokenMint,
+        wallet,
+        initialBuyLamports,
+        configKey
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create launch transaction: ${error.response?.data?.error || error.message}`);
@@ -135,29 +156,22 @@ export class BagsAPI {
     }
   }
 
-  static async createClaimTransactions(wallet, tokenMint = null) {
+  static async createClaimTransactions(feeClaimer, tokenMint, options = {}) {
     try {
-      const params = { wallet };
-      if (tokenMint) params.tokenMint = tokenMint;
+      const body = {
+        feeClaimer,
+        tokenMint,
+        claimVirtualPoolFees: options.claimVirtualPoolFees !== false,
+        claimDammV2Fees: options.claimDammV2Fees !== false
+      };
 
-      const response = await api.post('/token-launch/claim-transactions', params);
+      if (options.virtualPoolAddress) body.virtualPoolAddress = options.virtualPoolAddress;
+      if (options.dammV2Position) body.dammV2Position = options.dammV2Position;
+
+      const response = await api.post('/token-launch/claim-txs/v2', body);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create claim transactions: ${error.response?.data?.error || error.message}`);
-    }
-  }
-
-  // ========== FEE SHARING ==========
-
-  static async createFeeShareConfig(tokenMint, feeClaimers) {
-    try {
-      const response = await api.post('/fee-share/create-config', {
-        tokenMint,
-        feeClaimers
-      });
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to create fee share config: ${error.response?.data?.error || error.message}`);
     }
   }
 }

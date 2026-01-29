@@ -141,10 +141,10 @@ export const launchCommands = [
           return;
         }
 
-        await interaction.editReply('⏳ Creating token metadata and building launch transaction...');
+        await interaction.editReply('⏳ Step 1/3: Creating token metadata...');
 
-        // Create token info/metadata
-        const tokenInfoData = await BagsAPI.createTokenInfo(tokenData, null);
+        // Step 1: Create token info/metadata
+        const tokenInfoData = await BagsAPI.createTokenInfo(tokenData);
 
         if (!tokenInfoData.success) {
           await interaction.editReply(`❌ Error creating token info: ${tokenInfoData.error || 'Unknown error'}`);
@@ -152,20 +152,42 @@ export const launchCommands = [
         }
 
         const tokenMint = tokenInfoData.data.tokenMint;
+        const ipfs = tokenInfoData.data.tokenMetadata; // IPFS URL
 
-        // Create launch transaction
-        const txData = await BagsAPI.createLaunchTransaction({
+        await interaction.editReply('⏳ Step 2/3: Creating fee share configuration...');
+
+        // Step 2: Create fee share config (100% to creator)
+        const feeConfigData = await BagsAPI.createFeeShareConfig(
+          wallet, // payer
+          tokenMint, // baseMint
+          [wallet], // claimersArray - just the creator
+          [10000] // basisPointsArray - 100% (10000 basis points)
+        );
+
+        if (!feeConfigData.success) {
+          await interaction.editReply(`❌ Error creating fee config: ${feeConfigData.error || 'Unknown error'}`);
+          return;
+        }
+
+        const configKey = feeConfigData.data.configKey;
+
+        await interaction.editReply('⏳ Step 3/3: Building launch transaction...');
+
+        // Step 3: Create launch transaction
+        const txData = await BagsAPI.createLaunchTransaction(
+          ipfs,
           tokenMint,
-          creatorPublicKey: wallet,
-          initialBuyAmount: 0
-        });
+          wallet,
+          0, // initialBuyLamports
+          configKey
+        );
 
         if (!txData.success) {
           await interaction.editReply(`❌ Error creating launch transaction: ${txData.error || 'Unknown error'}`);
           return;
         }
 
-        const transaction = txData.data.transaction;
+        const transaction = txData.data.transaction || txData.data;
 
         const txInfo = TransactionBuilder.formatTransactionMessage(transaction, {
           action: 'launch',
