@@ -153,7 +153,17 @@ export const analyticsCommands = [
           return;
         }
 
-        const events = data.response; // response is an array
+        // Handle different possible response structures
+        let events;
+        if (Array.isArray(data.response)) {
+          events = data.response;
+        } else if (data.response && Array.isArray(data.response.events)) {
+          events = data.response.events;
+        } else {
+          console.error('Unexpected response structure:', JSON.stringify(data.response, null, 2));
+          await interaction.editReply('❌ Unexpected API response format. Check logs for details.');
+          return;
+        }
 
         if (!events || events.length === 0) {
           await interaction.editReply('No claim events found for this token.');
@@ -168,7 +178,7 @@ export const analyticsCommands = [
           );
 
         events.slice(0, 10).forEach((event, index) => {
-          const claimer = TransactionBuilder.truncateAddress(event.claimer || 'Unknown');
+          const claimer = TransactionBuilder.truncateAddress(event.wallet || 'Unknown');
           const amount = TransactionBuilder.lamportsToSol(event.amount || 0);
           const timestamp = event.timestamp ? new Date(event.timestamp).toLocaleDateString() : 'Unknown';
 
