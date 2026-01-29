@@ -71,7 +71,7 @@ export const tradingCommands = [
           return;
         }
 
-        const quote = data.data;
+        const quote = data.response;
         const quoteId = `quote_${Date.now()}_${interaction.user.id}`;
 
         // Store quote for 5 minutes
@@ -94,9 +94,9 @@ export const tradingCommands = [
             { name: 'To Token', value: `\`${TransactionBuilder.truncateAddress(toMint)}\``, inline: true },
             { name: '\u200b', value: '\u200b', inline: true },
             { name: 'Input Amount', value: `${amount} ${fromMint === 'So11111111111111111111111111111111111111112' ? 'SOL' : 'tokens'}`, inline: true },
-            { name: 'Output Amount', value: `${TransactionBuilder.lamportsToSol(quote.outputAmount || 0)}`, inline: true },
+            { name: 'Output Amount', value: `${TransactionBuilder.lamportsToSol(quote.outAmount || 0)}`, inline: true },
             { name: '\u200b', value: '\u200b', inline: true },
-            { name: 'Price Impact', value: `${quote.priceImpact?.toFixed(2) || 'N/A'}%`, inline: true },
+            { name: 'Price Impact', value: `${parseFloat(quote.priceImpactPct || 0).toFixed(2)}%`, inline: true },
             { name: 'Slippage', value: `${(slippage / 100).toFixed(2)}%`, inline: true },
             { name: '\u200b', value: '\u200b', inline: true }
           )
@@ -195,7 +195,7 @@ export const tradingCommands = [
           return;
         }
 
-        const transaction = txData.data.transaction;
+        const transaction = txData.response.swapTransaction;
 
         const txInfo = TransactionBuilder.formatTransactionMessage(transaction, {
           action: 'swap',
