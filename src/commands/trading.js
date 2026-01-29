@@ -188,7 +188,7 @@ export const tradingCommands = [
         }
 
         // Build transaction
-        const txData = await BagsAPI.createSwapTransaction(quoteData.quote.id, wallet);
+        const txData = await BagsAPI.createSwapTransaction(quoteData.quote, wallet);
 
         if (!txData.success) {
           await interaction.editReply(`❌ Error: ${txData.error || 'Failed to build transaction'}`);

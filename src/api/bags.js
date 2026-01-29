@@ -14,7 +14,9 @@ export class BagsAPI {
 
   static async getTokenLifetimeFees(tokenMint) {
     try {
-      const response = await api.get(`/analytics/token-lifetime-fees/${tokenMint}`);
+      const response = await api.get('/token-launch/lifetime-fees', {
+        params: { tokenMint }
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch token fees: ${error.response?.data?.error || error.message}`);
@@ -23,7 +25,9 @@ export class BagsAPI {
 
   static async getTokenClaimStats(tokenMint) {
     try {
-      const response = await api.get(`/analytics/token-claim-stats/${tokenMint}`);
+      const response = await api.get('/token-launch/claim-stats', {
+        params: { tokenMint }
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch claim stats: ${error.response?.data?.error || error.message}`);
@@ -33,10 +37,12 @@ export class BagsAPI {
   static async getTokenClaimEvents(tokenMint, options = {}) {
     try {
       const params = {
+        tokenMint,
+        mode: options.mode || 'offset',
         limit: options.limit || 10,
         offset: options.offset || 0
       };
-      const response = await api.get(`/analytics/token-claim-events/${tokenMint}`, { params });
+      const response = await api.get('/fee-share/token/claim-events', { params });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch claim events: ${error.response?.data?.error || error.message}`);
@@ -45,7 +51,9 @@ export class BagsAPI {
 
   static async getTokenLaunchCreators(tokenMint) {
     try {
-      const response = await api.get(`/token/launch/creators/${tokenMint}`);
+      const response = await api.get('/token-launch/creator/v3', {
+        params: { tokenMint }
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch token creators: ${error.response?.data?.error || error.message}`);
@@ -56,11 +64,14 @@ export class BagsAPI {
 
   static async getTradeQuote(inputMint, outputMint, amount, slippageBps = 100) {
     try {
-      const response = await api.post('/trade/quote', {
-        inputMint,
-        outputMint,
-        amount,
-        slippageBps
+      const response = await api.get('/trade/quote', {
+        params: {
+          inputMint,
+          outputMint,
+          amount,
+          slippageMode: 'manual',
+          slippageBps
+        }
       });
       return response.data;
     } catch (error) {
@@ -68,10 +79,10 @@ export class BagsAPI {
     }
   }
 
-  static async createSwapTransaction(quoteId, userPublicKey) {
+  static async createSwapTransaction(quoteResponse, userPublicKey) {
     try {
       const response = await api.post('/trade/swap', {
-        quoteId,
+        quoteResponse,
         userPublicKey
       });
       return response.data;
@@ -93,7 +104,7 @@ export class BagsAPI {
       if (tokenData.website) formData.append('website', tokenData.website);
       if (imageFile) formData.append('image', imageFile);
 
-      const response = await api.post('/token/info', formData, {
+      const response = await api.post('/token-launch/create-token-info', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;
@@ -104,7 +115,7 @@ export class BagsAPI {
 
   static async createLaunchTransaction(launchData) {
     try {
-      const response = await api.post('/token/launch', launchData);
+      const response = await api.post('/token-launch/create-launch-transaction', launchData);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create launch transaction: ${error.response?.data?.error || error.message}`);
@@ -115,7 +126,9 @@ export class BagsAPI {
 
   static async getClaimablePositions(wallet) {
     try {
-      const response = await api.get(`/claim/claimable/${wallet}`);
+      const response = await api.get('/token-launch/claimable-positions', {
+        params: { wallet }
+      });
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch claimable positions: ${error.response?.data?.error || error.message}`);
@@ -124,11 +137,10 @@ export class BagsAPI {
 
   static async createClaimTransactions(wallet, tokenMint = null) {
     try {
-      const params = tokenMint ? { tokenMint } : {};
-      const response = await api.post('/claim/transactions', {
-        wallet,
-        ...params
-      });
+      const params = { wallet };
+      if (tokenMint) params.tokenMint = tokenMint;
+
+      const response = await api.post('/token-launch/claim-transactions', params);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create claim transactions: ${error.response?.data?.error || error.message}`);
@@ -139,7 +151,7 @@ export class BagsAPI {
 
   static async createFeeShareConfig(tokenMint, feeClaimers) {
     try {
-      const response = await api.post('/fee-share/config', {
+      const response = await api.post('/fee-share/create-config', {
         tokenMint,
         feeClaimers
       });
