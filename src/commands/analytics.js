@@ -38,27 +38,28 @@ export const analyticsCommands = [
           );
 
         if (feesData.status === 'fulfilled' && feesData.value.success) {
-          const fees = feesData.value.data;
+          const feesLamports = feesData.value.response; // response is a string
           embed.addFields(
-            { name: 'Lifetime Fees', value: `${TransactionBuilder.lamportsToSol(fees.totalFees || 0)} SOL`, inline: true },
-            { name: 'Fees (USD)', value: `$${fees.totalFeesUsd?.toFixed(2) || 'N/A'}`, inline: true }
+            { name: 'Lifetime Fees', value: `${TransactionBuilder.lamportsToSol(feesLamports || '0')} SOL`, inline: true }
           );
         }
 
         if (statsData.status === 'fulfilled' && statsData.value.success) {
-          const stats = statsData.value.data;
-          embed.addFields(
-            { name: 'Total Claimers', value: `${stats.totalClaimers || 0}`, inline: true },
-            { name: 'Total Claims', value: `${stats.totalClaims || 0}`, inline: true },
-            { name: 'Total Claimed', value: `${TransactionBuilder.lamportsToSol(stats.totalClaimed || 0)} SOL`, inline: true }
-          );
+          const stats = statsData.value.response; // response is an array
+          if (stats && stats.length > 0) {
+            const totalClaimed = stats.reduce((sum, s) => sum + parseInt(s.totalClaimed || '0'), 0);
+            embed.addFields(
+              { name: 'Total Claimers', value: `${stats.length}`, inline: true },
+              { name: 'Total Claimed', value: `${TransactionBuilder.lamportsToSol(totalClaimed.toString())} SOL`, inline: true }
+            );
+          }
         }
 
         if (creatorsData.status === 'fulfilled' && creatorsData.value.success) {
-          const creators = creatorsData.value.data;
+          const creators = creatorsData.value.response; // response is an array
           if (creators && creators.length > 0) {
             const creatorInfo = creators.slice(0, 3).map((c, i) =>
-              `${i + 1}. \`${TransactionBuilder.truncateAddress(c.address)}\` (${c.provider || 'Unknown'})`
+              `${i + 1}. \`${TransactionBuilder.truncateAddress(c.wallet)}\` (${c.provider || 'Unknown'})`
             ).join('\n');
             embed.addFields({ name: 'Creators', value: creatorInfo, inline: false });
           }
@@ -101,14 +102,13 @@ export const analyticsCommands = [
           return;
         }
 
-        const fees = data.data;
+        const feesLamports = data.response; // response is a string
         const embed = new EmbedBuilder()
           .setColor(0x00FF99)
           .setTitle('💎 Token Lifetime Fees')
           .addFields(
             { name: 'Token', value: `\`${TransactionBuilder.truncateAddress(mint, 6)}\``, inline: false },
-            { name: 'Total Fees (SOL)', value: `${TransactionBuilder.lamportsToSol(fees.totalFees || 0)} SOL`, inline: true },
-            { name: 'Total Fees (USD)', value: `$${fees.totalFeesUsd?.toFixed(2) || 'N/A'}`, inline: true }
+            { name: 'Total Fees', value: `${TransactionBuilder.lamportsToSol(feesLamports || '0')} SOL`, inline: true }
           )
           .setFooter({ text: '✅ Safe Command - Read Only' })
           .setTimestamp();
@@ -153,7 +153,7 @@ export const analyticsCommands = [
           return;
         }
 
-        const events = data.data;
+        const events = data.response; // response is an array
 
         if (!events || events.length === 0) {
           await interaction.editReply('No claim events found for this token.');
@@ -216,7 +216,7 @@ export const analyticsCommands = [
           return;
         }
 
-        const creators = data.data;
+        const creators = data.response; // response is an array
 
         const embed = new EmbedBuilder()
           .setColor(0xFF0099)
@@ -227,9 +227,10 @@ export const analyticsCommands = [
 
         if (creators && creators.length > 0) {
           creators.slice(0, 10).forEach((creator, index) => {
+            const displayName = creator.providerUsername || creator.username || 'Unknown';
             embed.addFields({
               name: `Creator ${index + 1}`,
-              value: `Address: \`${TransactionBuilder.truncateAddress(creator.address || 'Unknown')}\`\nProvider: ${creator.provider || 'Unknown'}`,
+              value: `${displayName}\nWallet: \`${TransactionBuilder.truncateAddress(creator.wallet || 'Unknown')}\`\nProvider: ${creator.provider || 'Unknown'}`,
               inline: true
             });
           });

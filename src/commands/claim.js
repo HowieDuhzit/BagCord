@@ -31,7 +31,7 @@ export const claimCommands = [
           return;
         }
 
-        const positions = data.data;
+        const positions = data.response; // response is an array
         const totalPositions = positions?.length || 0;
 
         if (totalPositions === 0) {
